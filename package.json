@@ -18,7 +18,7 @@
     ],
     "author": "xelita <admin@xelita.com>",
     "license": "MIT",
-    "main": "src/cordovaDeviceModule.js",
+    "main": "src/timerModule.js",
     "devDependencies": {
         "karma": "~0.12.14",
         "karma-jasmine": "~0.1.5",
