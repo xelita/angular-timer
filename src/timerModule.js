@@ -1,18 +1,18 @@
 /**
- * Angular Polling Module.
+ * Angular Timer Module.
  */
-var angularPollingModule = angular.module('angularPollingModule', []);
+var angularTimerModule = angular.module('angularTimerModule', []);
 
 // Constants
 
 /**
  * Constants service used in the whole module.
  */
-angularPollingModule.constant('angularPollingConstants', {
-    defaultSettings: { 
-        'autoStart': false,        
+angularTimerModule.constant('angularTimerConstants', {
+    defaultSettings: {
+        'autoStart': false,
         'intervalMs': 5000,
-        'eventName': 'poller-tick'        
+        'eventName': 'angular-timer-tick'
     }
 });
 
@@ -21,66 +21,58 @@ angularPollingModule.constant('angularPollingConstants', {
 /**
  * Main service where all the magic happens.
  */
-angularPollingModule.factory('angularPollingService', ['$rootScope', '$log', 'angularPollingConstants', function ($rootScope, $log, angularPollingConstants) {
-  
-    // Interval function
-    var eventEmitterFunction = function(pollerConfig) {
+angularTimerModule.factory('angularTimerService', ['$rootScope', '$log', 'angularTimerConstants', function ($rootScope, $log, angularTimerConstants) {
+
+    /**
+     * Emitter function called when a new timer is started,
+     * @param timerConfig the timer configuration
+     */
+    var eventEmitterFunction = function (timerConfig) {
         $log.debug('eventEmitterFunction invoked.');
-        $rootScope.$broadcast(pollerConfig.eventName, {});
-    }; 
-    
+        $rootScope.$broadcast(timerConfig.eventName, {});
+    };
+
     return {
         /**
          * Return the default settings of this module.
          */
         defaultSettings: function () {
-            $log.debug('angularPollingService.defaultSettings.');
-            return angularPollingConstants.defaultSettings;
+            $log.debug('angularTimerService.defaultSettings.');
+            return angularTimerConstants.defaultSettings;
         },
-        
-        startPoller: function (pollerConfig) {
-            $log.debug('angularPollingService.startPoller.');
-           
+
+        /**
+         * Start a new timer based on the given configuration.
+         * @param timerConfig the timer configuration
+         * @returns {number} the timerId
+         */
+        startTimer: function (timerConfig) {
+            $log.debug('IN angularTimerService.startTimer.');
+
             // Wrapper function to inject parameter in setInterval function
-            var wrapperFunction = function() { 
-                eventEmitterFunction(pollerConfig); 
+            var wrapperFunction = function () {
+                eventEmitterFunction(timerConfig);
             };
-            return setInterval(wrapperFunction, pollerConfig.intervalMs);
+            return setInterval(wrapperFunction, timerConfig.intervalMs);
         },
-        
-        stopPoller: function (pollerId) {
-            $log.debug('angularPollingService.stopPoller.');
-            clearInterval(pollerId);
-        }       
+
+        /**
+         * Stop the timer identified by its id.
+         * @param timerId the timer identifier
+         */
+        stopTimer: function (timerId) {
+            $log.debug('IN angularTimerService.stopTimer.');
+            clearInterval(timerId);
+        }
     };
-}]);
-
-// Controllers
-
-/**
- * Convenience controller that registers service in its scope.
- */
-angularPollingModule.controller('angularPollingCtrl', ['$scope', '$log', 'angularPollingService', 'angularPollingConstants', function ($scope, $log, angularPollingService, angularPollingConstants) {
-
-    $scope.pollingStarted = false;
-    $scope.togglePollerStatus = function() {
-       $scope.pollingStarted = !$scope.pollingStarted; 
-    };
-    
-    $scope.$on('poll-tick-handler', function(){
-        $log.debug('tick!');
-    });
-    
-    // Export the angularPollingService in the controller scope
-    $scope.angularPollingService = angularPollingService;
-
-    // Export the angularPollingConstants in the controller scope
-    $scope.angularPollingConstants = angularPollingConstants;
 }]);
 
 // Directives
 
-angularPollingModule.directive('ngPoll', function($log, angularPollingService) {
+/**
+ * Directive responsible for creating a timer.
+ */
+angularTimerModule.directive('ngTimer', function ($log, angularTimerService) {
     return {
         priority: 0,
         restrict: 'E',
@@ -89,43 +81,46 @@ angularPollingModule.directive('ngPoll', function($log, angularPollingService) {
             intervalMs: '@',
             eventName: '@'
         },
-        link: function(scope, element, attr) {
-            // pollerId
-            var pollerId;
-            
-            // Extract scope data
-            var autoStart = scope.autoStart === true;
-            var eventName = scope.eventName || angularPollingService.defaultSettings().eventName;
-            var intervalMs = Number(scope.intervalMs) || angularPollingService.defaultSettings().intervalMs;
-            
-            var timerInitFunction = function(autoStart, eventName, intervalMs) {
-                $log.debug('IN ngPool.timerInitFunction.');
-              
-                // Poller config
-                var pollerConfig = {
+        link: function (scope, element, attr) {
+            // timerId
+            var timerId;
+
+            // Function responsible for starting the timer
+            var timerInitFunction = function () {
+                $log.debug('IN ngTimer.timerInitFunction.');
+
+                // Extract scope data
+                var autoStart = angular.isDefined(scope.autoStart) ? scope.autoStart === 'true' : angularTimerService.defaultSettings().autoStart;
+                var eventName = scope.eventName || angularTimerService.defaultSettings().eventName;
+                var intervalMs = Number(scope.intervalMs) || angularTimerService.defaultSettings().intervalMs;
+
+                // Timer config
+                var timerConfig = {
                     'autoStart': autoStart,
-                    'eventName': eventName, 
-                    'intervalMs': intervalMs 
+                    'eventName': eventName,
+                    'intervalMs': intervalMs
                 };
-                $log.debug('pollerConfig is: ' + angular.toJson(pollerConfig));
-                
-                // If autoStart is set to true, start the poller
-                if(pollerConfig.autoStart === true) {
-                    pollerId = angularPollingService.startPoller(pollerConfig);
-                    $log.debug('pollerId is:' + pollerId);
-                } else if(pollerId) {
-                    $log.debug('pollerId to stop is:' + pollerId);
-                    pollerId = angularPollingService.stopPoller(pollerId);
-                };  
+                $log.debug('timerConfig is: ' + angular.toJson(timerConfig));
+
+                // If autoStart is set to true, start the timer
+                if (timerConfig.autoStart === true) {
+                    // Only there is no timer currently running
+                    if (timerId) {
+                        $log.warn('A timer is currently running. Please stop it first. Timer id is: ' + timerId);
+                    } else {
+                        timerId = angularTimerService.startTimer(timerConfig);
+                        $log.debug('timerId is:' + timerId);
+                    }
+                } else if (timerId) {
+                    $log.debug('timerId to stop is:' + timerId);
+                    timerId = angularTimerService.stopTimer(timerId);
+                }
             };
-            
+
             // Init the timer
-            scope.$watch('autoStart', function(oldValue, newValue) {
-                $log.debug('oldValue: ' + oldValue);
-                $log.debug('newValue: ' + newValue);
-                $log.debug('newValue boolean: ' + newValue === true);
-                timerInitFunction(newValue === true, scope.eventName, scope.intervalMs);
+            scope.$watch('autoStart', function () {
+                timerInitFunction();
             });
-        }        
+        }
     };
 });
