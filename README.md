@@ -35,6 +35,16 @@ var myapp = angular.module('myapp', ['timerModule']);
 + Add define your controller accordingly to respond to events broadcasting:
 
 ```javascript
+$scope.timerStarted = false;
+
+$scope.startTimer = function () {
+    $scope.timerStarted = true;
+};
+
+$scope.stopTimer = function () {
+    $scope.timerStarted = false;
+};
+
 $scope.$on('angular-timer-tick-handler', function () {
     $log.debug('tick from ctrl!');
 });
