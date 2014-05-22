@@ -9,6 +9,7 @@ var angularTimerModule = angular.module('angularTimerModule', []);
  * Constants service used in the whole module.
  */
 angularTimerModule.constant('angularTimerConstants', {
+    apiVersion: '1.0.0',
     defaultSettings: {
         'autoStart': false,
         'intervalMs': 5000,
@@ -102,23 +103,27 @@ angularTimerModule.directive('ngTimer', function ($log, angularTimerService) {
                 };
                 $log.debug('timerConfig is: ' + angular.toJson(timerConfig));
 
-                // If autoStart is set to true, start the timer
+                // Stop the previous running timer if it exists
+                if (timerId) {
+                    $log.warn('A timer with id [' + timerId + '] is currently running. It will be stop...');
+                    angularTimerService.stopTimer(timerId);
+                }
+
+                // If autoStart is set to true, start a new timer
                 if (timerConfig.autoStart === true) {
-                    // Only there is no timer currently running
-                    if (timerId) {
-                        $log.warn('A timer is currently running. Please stop it first. Timer id is: ' + timerId);
-                    } else {
-                        timerId = angularTimerService.startTimer(timerConfig);
-                        $log.debug('timerId is:' + timerId);
-                    }
-                } else if (timerId) {
-                    $log.debug('timerId to stop is:' + timerId);
-                    timerId = angularTimerService.stopTimer(timerId);
+                    timerId = angularTimerService.startTimer(timerConfig);
+                    $log.warn('A new timer with id [' + timerId + '] has been started.');
                 }
             };
 
-            // Init the timer
+            // Init the timer when scope variables have been changed
             scope.$watch('autoStart', function () {
+                timerInitFunction();
+            });
+            scope.$watch('intervalMs', function () {
+                timerInitFunction();
+            });
+            scope.$watch('eventName', function () {
                 timerInitFunction();
             });
         }
